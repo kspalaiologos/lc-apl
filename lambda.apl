@@ -1,14 +1,24 @@
 lam←{
+     ⍝ TODO:
+     ⍝ - Ability to select mode (lex/parse, beta-reduce)
+     ⍝ - Showing steps of reduction (verbose mode)
+     ⍝ - Detecting terms with infinite expansion using hashes.
+     ⍝ - More built-in functions.
+     ⍝ - Integrated REPL.
+     ⍝ - Delta-conversion of lambda terms if matching one was
+     ⍝   found in the dictionary.
      ⎕IO⎕ML←1 1
      ∆d←⍪('true' ('Lam' (,'t') ('Lam' (,'f') ('Var' (,'t')))))
      ∆d,←('false' ('Lam' (,'t') ('Lam' (,'f') ('Var' (,'f')))))
      ⍺←∆d⋄∆t←⍺
      ∆hi←{∆t,←⍺⍵}⋄∆hr←{∆t∘←((∆t↑[2]⍨¯1∘+),∆t↓[2]⍨⊢)⍵⍳⍨,1↑∆t}
      err←{⍵⎕SIGNAL 8}⋄hash←{{1e10|⍺+31×⍵}/128+1(220⌶)⍵}
-     sd←'₀₁₂₃₄₅₆₇₈₉'⋄l←'()λ.='⋄ad←{⍵=0:⍺,'₀'⋄⍺,sd[,1+10⊥⍣¯1⊢⍵]}
+     sd←'₀₁₂₃₄₅₆₇₈₉'⋄l←'()λ.='⋄ad←{⍵=0:⍺⋄⍺,sd[,1+10⊥⍣¯1⊢⍵]}
+     str←{'Lam'≡⊃⍵:∊'(λ'(2⊃⍵)'. ',(∇3⊃⍵),')'⋄'Var'≡⊃⍵:2⊃⍵
+          'App'≡⊃⍵:∊'('(∇2⊃⍵)' '(∇3⊃⍵)')'}
      lx←{0=≢⍵:⍬⋄6≠i←l⍳⊃⍵:(⊂0,⊂i⊃l),∇ 1↓⍵⋄3≠(⎕UCS 10 32)⍳⊃⍵:∇ 1↓⍵
-         '#'=⊃⍵:∇ ⍵↓⍨1⍳⍨1,⍨⍵=⎕UCS 10⋄s←≢id←sd,⎕A,⎕C ⎕A⋄k←⊥⍨⌽s>id⍳⍵
-         k=0:err'etoken'⋄(⊂1,k↑⍵),∇ k↓⍵}
+         '#'=⊃⍵:∇ ⍵↓⍨1⍳⍨1,⍨⍵=⎕UCS 10⋄s←≢id←sd,⎕A,⎕C ⎕A⋄k←⊥⍨⌽s≥id⍳⍵
+         k=0:err'eltoken'⍵⋄(⊂1,k↑⍵),∇ k↓⍵}
      pr←{L←0 'λ' ⋄ P←0 '(' ⋄ E←0 '=' ⋄ C←0 ')' ⋄ D←0 '.'
          at←{P≡⊃⍵:{lx t←tr(1↓⍵)⋄C≢⊃lx:err'eparen'⋄(1↓lx) t}⍵
              1≡⊃⊃⍵:(1↓⍵)('Var'(1↓⊃⍵))⋄L≡⊃⍵:ab 1↓⍵⋄err'etoken'}
@@ -19,15 +29,18 @@ lam←{
              lx t←at ⍺⋄lx ∇'App'⍵ t}/at ⍵}
          bi←{k←⊃⍵⋄lx v←tr 2↓⍵⋄0≠≢lx:err'estray'⋄_←∆hr k⋄_←∆hi k v⋄⍬}
          E≡⊃1↓⍵:bi ⍵⋄⊃⌽tr ⍵}
-     ac←{a←⍪''0⋄∆i←{i←(,1↑a)⍳⊂⍵⋄_←⍺{⋄i>⊃⌽⍴a:a,←⍵ 0⋄a[2;i]+←⍺⋄0}⍵
-             ⍵ad,a[2;i]}⋄{
+     ac←{⍺←⍪''0⋄a←⍺⋄∆i←{i←(,1↑a)⍳⊂⍵⋄_←⍺{⋄i>⊃⌽⍴a:a,←⍵ 0⋄a[2;i]+←⍺⋄0}⍵⋄⍵ad,a[2;i]}⋄{
              'Var'≡⊃⍵:'Var' (0 ∆i ⊃⌽⍵)
              'App'≡⊃⍵:'App' (∇2⊃⍵) (∇3⊃⍵)
              'Lam'≡⊃⍵:(⊂'Lam'),((∇3⊃⍵) ,⍨⍥⊂ (1 ∆i 2⊃⍵))}⍵}
-     de←{lk←{(⊂⍵)∊⍺:'Var'⍵⋄i←(⊂⍵)⍳⍨,1↑∆t⋄i>⊃⌽⍴∆t:'Var'⍵⋄⊃∆t[2;i]}
-         (⊂'') {
+     de←{lk←{(⊂⍵)∊⍺:'Var'⍵⋄i←(⊂⍵)⍳⍨,1↑∆t⋄i>⊃⌽⍴∆t:'Var'⍵⋄⊃∆t[2;i]}⋄{⍺←⊂''
              'Var'≡⊃⍵:(⍺ lk ⊃⌽⍵)
              'App'≡⊃⍵:'App' (⍺∇2⊃⍵) (⍺∇3⊃⍵)
-             'Lam'≡⊃⍵:(2↑⍵),⊂((⍺,⊂2⊃⍵)∇3⊃⍵)}⍵}
-     ast←pr lx ⍵⋄ast≡⍬:_←⍬⋄ac de ast
+             'Lam'≡⊃⍵:(2↑⍵),⊂(⍺,⊂2⊃⍵)∇3⊃⍵}⍵}
+     br←{'Lam'≡⊃⍵:(2↑⍵),⊂∇3⊃⍵⋄'Var'≡⊃⍵:⍵⋄'App'≢⊃⍵:err'eint'
+         an bn←∇¨1↓⍵⋄'Lam'≢⊃an:⍵⋄an bn←1↓ac 'App' an bn⋄av←2⊃an⋄{
+             v←'Var'≡⊃⍵⋄v∧av≡2⊃⍵:bn⋄v:⍵
+             v←'Lam'≡⊃⍵⋄v∧av≡2⊃⍵:⍵⋄v:(2↑⍵),⊂∇3⊃⍵
+             'App'≡⊃⍵:'App' (∇2⊃⍵) (∇3⊃⍵)}3⊃an}
+     ast←pr lx ⍵⋄ast≡⍬:_←⍬⋄str br⍣≡ de ast
  }
